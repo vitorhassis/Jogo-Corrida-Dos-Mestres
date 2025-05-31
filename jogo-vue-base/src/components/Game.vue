@@ -45,10 +45,15 @@
         <img src="/imgGameOver.png" class="img-game-over" alt="Game Over" />
         <button class="btn-reiniciar" @click="reiniciarJogo">REINICIAR</button>
       </div>
+
+      <!-- Tela de Pause -->
+      <div v-if="jogoPausado && !gameOver" class="pause-overlay">
+        <img src="/telaPause.png" class="img-game-over" alt="Pause" />
+        <button class="btn-continue" @click="togglePause">CONTINUAR</button>
+      </div>
     </div>
   </div>
 </template>
-
 
 <script setup>
 import { ref, reactive, watch, onBeforeUnmount, onMounted } from "vue";
@@ -91,6 +96,7 @@ function onKeyDown(e) {
     velocityY = jumpForce;
     grounded.value = false;
   }
+  if (e.key === "Escape") togglePause();
 }
 
 function onKeyUp(e) {
@@ -123,16 +129,12 @@ function togglePause() {
 
   if (jogoPausado.value) {
     if (somNivel1.value) somNivel1.value.pause();
-
-    // Para animações
     if (playerAnim) clearInterval(playerAnim);
     if (bossAnim) clearInterval(bossAnim);
   } else {
     if (somNivel1.value && somAtivo.value) {
       somNivel1.value.play().catch(() => {});
     }
-
-    // Retoma animações
     playerAnim = setInterval(() => {
       playerSrc.value = playerSrc.value.endsWith("2.png")
         ? "/player.png"
@@ -146,7 +148,6 @@ function togglePause() {
     }, 300);
   }
 }
-
 
 function verificarGameOver() {
   if (vidas.every((v) => !v)) {
@@ -195,55 +196,53 @@ function iniciarJogo() {
   }, 300);
 
   poderLoop = setInterval(() => {
-  if (jogoPausado.value) return;
+    if (jogoPausado.value) return;
 
-  poderVisivel.value = true;
-  poderX.value = 0;
-  let podePerder = true;
+    poderVisivel.value = true;
+    poderX.value = 0;
+    let podePerder = true;
 
-  const anim = setInterval(() => {
-    if (jogoPausado.value) return; // impede que ele mova enquanto pausado
+    const anim = setInterval(() => {
+      if (jogoPausado.value) return;
 
-    poderX.value += 10;
+      poderX.value += 10;
+      const pEl = document.querySelector(".poder");
+      const pl = document.querySelector(".player");
 
-    const pEl = document.querySelector(".poder");
-    const pl = document.querySelector(".player");
+      if (pEl && pl && podePerder) {
+        const r1 = pEl.getBoundingClientRect();
+        const r2 = pl.getBoundingClientRect();
 
-    if (pEl && pl && podePerder) {
-      const r1 = pEl.getBoundingClientRect();
-      const r2 = pl.getBoundingClientRect();
+        if (
+          r1.left < r2.right &&
+          r1.right > r2.left &&
+          r1.top < r2.bottom &&
+          r1.bottom > r2.top
+        ) {
+          const idx = vidas.findIndex((v) => v);
+          if (idx !== -1) vidas[idx] = false;
+          podePerder = false;
 
-      if (
-        r1.left < r2.right &&
-        r1.right > r2.left &&
-        r1.top < r2.bottom &&
-        r1.bottom > r2.top
-      ) {
-        const idx = vidas.findIndex((v) => v);
-        if (idx !== -1) vidas[idx] = false;
-        podePerder = false;
+          if (somImpacto.value && somAtivo.value) {
+            somImpacto.value.volume = 1.0;
+            somImpacto.value.currentTime = 0;
+            somImpacto.value.play().catch(() => {});
+          }
 
-        if (somImpacto.value && somAtivo.value) {
-          somImpacto.value.volume = 1.0;
-          somImpacto.value.currentTime = 0;
-          somImpacto.value.play().catch(() => {});
+          poderVisivel.value = false;
+          clearInterval(anim);
+          verificarGameOver();
         }
-
-        poderVisivel.value = false;
-        clearInterval(anim);
-        verificarGameOver();
       }
-    }
 
-    if (poderX.value > window.innerWidth) {
-      clearInterval(anim);
-      poderVisivel.value = false;
-    }
-  }, 50);
+      if (poderX.value > window.innerWidth) {
+        clearInterval(anim);
+        poderVisivel.value = false;
+      }
+    }, 50);
 
-  poderAnims.push(anim);
-}, 3000);
-
+    poderAnims.push(anim);
+  }, 3000);
 }
 
 function limparJogo() {
@@ -371,7 +370,7 @@ onMounted(() => {
 
 .btn-reiniciar {
   position: absolute;
-  bottom: 460px;
+  bottom: 410px;
   font-family: 'Press Start 2P', monospace;
   font-size: 16px;
   background: red;
@@ -402,6 +401,20 @@ onMounted(() => {
 .btn-pause img {
   width: 52px;
   height: 52px;
+}
+
+.btn-continue {
+  position: absolute;
+  bottom: 180px;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 16px;
+  background: green;
+  color: #fff;
+  padding: 16px 32px;
+  border: 4px solid black;
+  box-shadow: 4px 4px black;
+  cursor: pointer;
+  transition: transform 0.1s;
 }
 
 
